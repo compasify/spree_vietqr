@@ -1,0 +1,237 @@
+<% vietqr_accounts = f.object.persisted? ? f.object.receiving_accounts.ordered_for_routing.to_a : [] %>
+<% active_vietqr_accounts = vietqr_accounts.select(&:active?) %>
+<% vietqr_all_limited_accounts_exhausted = active_vietqr_accounts.any? && active_vietqr_accounts.none? { |account| account.monthly_quota_amount.blank? || account.monthly_quota_amount.to_i <= 0 } && active_vietqr_accounts.all? { |account| account.period_allocated_amount.to_i >= account.monthly_quota_amount.to_i } %>
+<style>
+  .form-group:not(.vietqr-managed-field):has([name*="[preferred_account_routing_strategy]"], [name*="[preferences][account_routing_strategy]"]),
+  .field:not(.vietqr-managed-field):has([name*="[preferred_account_routing_strategy]"], [name*="[preferences][account_routing_strategy]"]) {
+    display: none !important;
+  }
+
+  .vietqr-info-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .vietqr-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .vietqr-help-panel {
+    max-width: 56rem;
+  }
+</style>
+
+<div data-vietqr-custom-fields>
+<div class="card mb-4">
+  <div class="card-header bg-light d-flex align-items-center justify-content-between">
+    <strong>Cấu hình VietQR</strong>
+    <button type="button"
+            class="vietqr-info-button text-muted"
+            data-vietqr-toggle="provider-help"
+            aria-expanded="false"
+            aria-controls="vietqr-provider-help"
+            title="Giải thích provider và webhook">
+      <span class="vietqr-info-icon">i</span>
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="vietqr-provider-help" class="alert alert-light border d-none vietqr-help-panel" data-vietqr-panel="provider-help">
+      Provider và credential webhook được cấu hình trên từng tài khoản nhận tiền. Admin vẫn có thể xác nhận thanh toán thủ công cho mọi tài khoản; webhook chỉ là đường tự động xác nhận khi provider gửi đúng mã đơn, đúng số tiền và đúng tài khoản đã cấp phát.
+    </div>
+    <% if vietqr_all_limited_accounts_exhausted %>
+      <div class="alert alert-warning vietqr-help-panel">
+        Tất cả tài khoản VietQR đang bật có hạn mức đều đã hết hạn mức tháng. Hệ thống vẫn sẽ cấp phát vào tài khoản đầu tiên theo <code>priority</code> để không chặn nhận tiền; hãy tăng hạn mức hoặc thêm tài khoản nếu muốn tránh vượt hạn mức.
+      </div>
+    <% end %>
+    <div class="row">
+      <div class="col-md-6 form-group vietqr-managed-field">
+        <%= f.label :preferred_account_routing_strategy, 'Cách chọn tài khoản' %>
+        <%= f.select :preferred_account_routing_strategy,
+                     options_for_select(Spree::PaymentMethod::Vietqr.routing_strategy_options, f.object.preferred_account_routing_strategy),
+                     {},
+                     class: 'form-control custom-select' %>
+        <small class="form-text text-muted">
+          Ưu tiên tài khoản đang bật và còn đủ hạn mức cho đúng số tiền đơn hàng. Hạn mức trống hoặc bằng 0 được hiểu là không giới hạn.
+        </small>
+        <div class="alert alert-light border mt-2 mb-0 py-2 px-3 vietqr-help-panel" data-vietqr-routing-help>
+          <div data-vietqr-routing-description="single">
+            <strong>Fill first:</strong>
+            chọn tài khoản có <code>priority</code> nhỏ nhất còn đủ hạn mức. Khi tài khoản đó đầy, hệ thống tự chuyển sang tài khoản có <code>priority</code> tiếp theo.
+          </div>
+          <div class="d-none" data-vietqr-routing-description="round_robin">
+            <strong>Xoay vòng:</strong>
+            ưu tiên tài khoản lâu nhất chưa được cấp phát (<code>last_allocated_at</code> cũ nhất). Nếu trùng nhau thì xét tiếp <code>priority</code>, rồi <code>id</code>. Phù hợp khi muốn chia lượt tương đối đều giữa nhiều tài khoản.
+          </div>
+          <div class="d-none" data-vietqr-routing-description="random">
+            <strong>Ngẫu nhiên:</strong>
+            bốc ngẫu nhiên một tài khoản trong nhóm đủ điều kiện. Cách này đơn giản nhưng không đảm bảo chia đều tuyệt đối.
+          </div>
+          <div class="d-none" data-vietqr-routing-description="quota_waterfall">
+            <strong>Theo hạn mức:</strong>
+            ưu tiên các tài khoản chưa chạm <code>Ngưỡng chuyển tài khoản</code>. Khi tất cả tài khoản đủ điều kiện đều đã chạm ngưỡng, hệ thống quay lại chọn theo <code>priority</code>. Phù hợp khi muốn đổ tiền vào tài khoản chính trước, rồi mới chuyển dần sang tài khoản kế tiếp.
+          </div>
+          <div class="mt-2 text-warning">
+            Nếu mọi tài khoản đang bật đều đã hết hạn mức, hệ thống vẫn chọn tài khoản đầu tiên theo <code>priority</code> để không chặn nhận tiền.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <strong>Tài khoản nhận tiền</strong>
+    <% if f.object.persisted? %>
+      <span>
+        <%= link_to 'Quản lý', admin_payment_method_vietqr_receiving_accounts_path(f.object), class: 'btn btn-sm btn-outline-secondary mr-2' %>
+        <%= link_to 'Thêm', new_admin_payment_method_vietqr_receiving_account_path(f.object), class: 'btn btn-sm btn-primary' %>
+      </span>
+    <% end %>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Trạng thái</th>
+          <th>Provider</th>
+          <th>Keyword</th>
+          <th>Ưu tiên</th>
+          <th>Ngân hàng</th>
+          <th>Số tài khoản</th>
+          <th>Chủ tài khoản</th>
+          <th>Hạn mức</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% vietqr_accounts.each do |account| %>
+          <tr>
+            <td><span class="badge <%= account.active? ? 'badge-success' : 'badge-secondary' %>"><%= account.active? ? 'Đang bật' : 'Đã tắt' %></span></td>
+            <td><code><%= account.provider %></code></td>
+            <td><code><%= account.keyword_init.presence || '-' %></code></td>
+            <td><%= account.priority %></td>
+            <td><%= account.bank_name.presence || account.bank_bin %></td>
+            <td><code><%= account.account_number %></code></td>
+            <td><%= account.account_name %></td>
+            <td><%= number_with_delimiter(account.monthly_quota_amount) if account.monthly_quota_amount.present? %></td>
+            <td class="text-right">
+              <%= link_to 'Sửa', edit_admin_payment_method_vietqr_receiving_account_path(f.object, account), class: 'btn btn-sm btn-outline-secondary' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% unless f.object.persisted? %>
+    <div class="card-body border-top">
+      <span class="text-muted">Lưu phương thức thanh toán trước để thêm tài khoản.</span>
+    </div>
+  <% end %>
+</div>
+</div>
+
+<script>
+  (() => {
+    const setup = () => {
+      const container = document.querySelector('[data-vietqr-custom-fields]');
+      if (!container || container.dataset.vietqrSetup === 'true') return;
+      container.dataset.vietqrSetup = 'true';
+
+      ['account_routing_strategy'].forEach((key) => {
+        const dashedKey = key.replaceAll('_', '-');
+        const controls = document.querySelectorAll([
+          `[name*="[preferred_${key}]"]`,
+          `[name*="[preferences][${key}]"]`,
+          `[id*="preferred-${dashedKey}"]`,
+          `[id*="preference-${dashedKey}"]`,
+          `[id*="preferred_${key}"]`,
+          `[id*="preference_${key}"]`
+        ].join(','));
+
+        controls.forEach((control) => {
+          if (control.closest('[data-vietqr-custom-fields]')) return;
+
+          control.disabled = true;
+          const wrapper = control.closest('.form-group, .field, .mb-3, .col, [class*="col-"], tr, li') || control.parentElement;
+          if (wrapper) wrapper.classList.add('d-none', 'hidden');
+        });
+
+        const field = document.getElementById(`spree-payment-method-vietqr-preference-${dashedKey}`);
+        if (field && !field.closest('[data-vietqr-custom-fields]')) {
+          field.classList.add('d-none', 'hidden');
+          field.querySelectorAll('input, select, textarea').forEach((control) => { control.disabled = true; });
+        }
+      });
+
+      container.querySelectorAll('[data-vietqr-toggle]').forEach((button) => {
+        if (button.dataset.bound === 'true') return;
+
+        button.dataset.bound = 'true';
+        button.addEventListener('click', () => {
+          const panel = container.querySelector(`[data-vietqr-panel="${button.dataset.vietqrToggle}"]`);
+          if (!panel) return;
+
+          const expanded = button.getAttribute('aria-expanded') === 'true';
+          button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+          panel.classList.toggle('d-none', expanded);
+        });
+      });
+
+      const routingStrategySelect = container.querySelector('[name*="[preferred_account_routing_strategy]"], [name*="[preferences][account_routing_strategy]"]');
+      const syncRoutingHelp = () => {
+        if (!routingStrategySelect) return;
+
+        container.querySelectorAll('[data-vietqr-routing-description]').forEach((element) => {
+          element.classList.toggle('d-none', element.dataset.vietqrRoutingDescription !== routingStrategySelect.value);
+        });
+      };
+
+      if (routingStrategySelect && routingStrategySelect.dataset.bound !== 'true') {
+        routingStrategySelect.dataset.bound = 'true';
+        routingStrategySelect.addEventListener('change', syncRoutingHelp);
+      }
+      syncRoutingHelp();
+
+      document.querySelectorAll('[data-vietqr-copy-button]').forEach((button) => {
+        if (button.dataset.bound === 'true') return;
+
+        button.dataset.bound = 'true';
+        button.addEventListener('click', () => {
+          const source = document.querySelector(`[data-vietqr-copy-source="${button.dataset.vietqrCopyButton}"]`);
+          if (!source) return;
+
+          source.select();
+          source.setSelectionRange(0, source.value.length);
+
+          const resetText = () => setTimeout(() => { button.textContent = 'Copy'; }, 1200);
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(source.value).then(() => {
+              button.textContent = 'Đã copy';
+              resetText();
+            });
+          } else {
+            document.execCommand('copy');
+            button.textContent = 'Đã copy';
+            resetText();
+          }
+        });
+      });
+
+    };
+
+    document.addEventListener('DOMContentLoaded', setup);
+    document.addEventListener('turbo:load', setup);
+    setup();
+  })();
+</script>

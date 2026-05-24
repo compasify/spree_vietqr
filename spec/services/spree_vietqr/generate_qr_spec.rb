@@ -8,9 +8,16 @@ RSpec.describe SpreeVietqr::GenerateQr do
   let(:payment_method) do
     double(
       "Spree::PaymentMethod::Vietqr",
-      preferred_bank_bin: "970422",
-      preferred_account_number: "0123456789",
-      preferred_account_name: "NGUYEN VAN A"
+      active_receiving_accounts: [receiving_account]
+    )
+  end
+
+  let(:receiving_account) do
+    double(
+      'SpreeVietqr::ReceivingAccount',
+      bank_bin: '970422',
+      account_number: '0123456789',
+      account_name: 'NGUYEN VAN A'
     )
   end
 
@@ -44,12 +51,12 @@ RSpec.describe SpreeVietqr::GenerateQr do
     end
 
     context "with Vietnamese diacritics in account name" do
-      let(:payment_method) do
+      let(:receiving_account) do
         double(
-          "Spree::PaymentMethod::Vietqr",
-          preferred_bank_bin: "970436",
-          preferred_account_number: "9876543210",
-          preferred_account_name: "NGUYỄN VĂN B"
+          'SpreeVietqr::ReceivingAccount',
+          bank_bin: '970436',
+          account_number: '9876543210',
+          account_name: 'NGUYỄN VĂN B'
         )
       end
 
@@ -72,6 +79,53 @@ RSpec.describe SpreeVietqr::GenerateQr do
 
         expect(url).to include("amount=99500")
         expect(url).not_to include("99500.75")
+      end
+    end
+
+    context 'with an allocation snapshot' do
+      let(:allocation) do
+        double(
+          'SpreeVietqr::PaymentAllocation',
+          bank_bin: '970436',
+          account_number: '111222333',
+          account_name: 'ALLOCATED ACCOUNT',
+          expected_amount: 222_000,
+          transfer_content: 'MMOR123456789',
+          provider_qr_code: nil
+        )
+      end
+
+      it 'uses the allocation account and amount' do
+        url = subject.call(payment_method: payment_method, order: order, allocation: allocation)
+
+        expect(url).to include('img.vietqr.io/image/970436-111222333-compact2.png')
+        expect(url).to include('amount=222000')
+        expect(url).to include('accountName=ALLOCATED+ACCOUNT')
+      end
+    end
+
+    context 'for topup with a receiving account' do
+      let(:receiving_account) do
+        double(
+          'SpreeVietqr::ReceivingAccount',
+          bank_bin: '970436',
+          account_number: '444555666',
+          account_name: 'TOPUP ACCOUNT'
+        )
+      end
+
+      it 'uses the receiving account for the QR destination' do
+        url = subject.call_for_topup(
+          payment_method: payment_method,
+          amount: 100_000,
+          transfer_content: 'DHNAPABC12345',
+          receiving_account: receiving_account
+        )
+
+        expect(url).to include('img.vietqr.io/image/970436-444555666-compact2.png')
+        expect(url).to include('amount=100000')
+        expect(url).to include('addInfo=DHNAPABC12345')
+        expect(url).to include('accountName=TOPUP+ACCOUNT')
       end
     end
   end

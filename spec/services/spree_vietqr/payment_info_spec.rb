@@ -4,19 +4,43 @@ require 'spec_helper'
 
 RSpec.describe SpreeVietqr::PaymentInfo do
   let(:payment_method) do
+    double("Spree::PaymentMethod::Vietqr")
+  end
+
+  let(:payment) { double('Spree::Payment', amount: 250_000) }
+  let(:payments_relation) { double('PaymentsRelation') }
+  let(:allocation) do
     double(
-      "Spree::PaymentMethod::Vietqr",
-      preferred_bank_bin: "970422",
-      preferred_account_number: "0123456789",
-      preferred_account_name: "NGUYEN VAN A"
+      'SpreeVietqr::PaymentAllocation',
+      bank_bin: bank_bin,
+      account_number: account_number,
+      account_name: account_name,
+      expected_amount: 250_000,
+      transfer_content: 'MMOR123456789',
+      order_number: 'R123456789',
+      provider_checkout_url: nil,
+      payment_link_id: nil,
+      provider_qr_code: nil
     )
   end
 
+  let(:bank_bin) { '970422' }
+  let(:account_number) { '0123456789' }
+  let(:account_name) { 'NGUYEN VAN A' }
+
   let(:order) do
-    double("Spree::Order", number: "R123456789", total: 250_000)
+    double("Spree::Order", number: "R123456789", total: 250_000, payments: payments_relation)
   end
 
   subject { described_class.new(payment_method: payment_method, order: order) }
+
+  before do
+    allow(payments_relation).to receive(:where).and_return(payments_relation)
+    allow(payments_relation).to receive(:order).with(:id).and_return(payments_relation)
+    allow(payments_relation).to receive(:last).and_return(payment)
+    allow(SpreeVietqr::AllocatePaymentAccount).to receive(:new)
+      .and_return(double('Allocator', call: allocation))
+  end
 
   describe '#to_h' do
     it "returns complete payment info hash" do
@@ -41,14 +65,8 @@ RSpec.describe SpreeVietqr::PaymentInfo do
     end
 
     context "with unknown BIN" do
-      let(:payment_method) do
-        double(
-          "Spree::PaymentMethod::Vietqr",
-          preferred_bank_bin: "999999",
-          preferred_account_number: "0123456789",
-          preferred_account_name: "TEST"
-        )
-      end
+      let(:bank_bin) { '999999' }
+      let(:account_name) { 'TEST' }
 
       it "returns fallback name" do
         expect(subject.bank_name).to eq("Bank 999999")

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'spree_vietqr'
+require 'spec_helper'
 
 RSpec.describe Spree::PaymentMethod::Vietqr do
   subject(:payment_method) { described_class.new }
@@ -30,22 +30,27 @@ RSpec.describe Spree::PaymentMethod::Vietqr do
   end
 
   describe 'preferences' do
-    it 'has bank_bin preference' do
-      payment_method.preferred_bank_bin = '970422'
-      expect(payment_method.preferred_bank_bin).to eq('970422')
+    it 'has account_routing_strategy preference defaulting to single' do
+      expect(payment_method.preferred_account_routing_strategy).to eq('single')
+      expect(payment_method.account_routing_strategy).to eq('single')
     end
+  end
 
-    it 'has account_number preference' do
-      payment_method.preferred_account_number = '0123456789'
-      expect(payment_method.preferred_account_number).to eq('0123456789')
+  describe '.provider_options' do
+    it 'lists supported provider choices for admin selection' do
+      expect(described_class.provider_options).to include(['Xác nhận thủ công', 'manual'], ['Webhook SePay', 'sepay'], ['Webhook PayOS', 'payos'])
     end
+  end
 
-    it 'has provider preference defaulting to manual' do
-      expect(payment_method.preferred_provider).to eq('manual')
+  describe '#custom_form_fields_partial_name' do
+    it 'uses the VietQR admin custom fields partial' do
+      expect(payment_method.custom_form_fields_partial_name).to eq('vietqr')
     end
+  end
 
-    it 'has auto_confirm_grace_seconds preference defaulting to 60' do
-      expect(payment_method.preferred_auto_confirm_grace_seconds).to eq(60)
+  describe '.routing_strategy_options' do
+    it 'lists supported account routing strategies' do
+      expect(described_class.routing_strategy_options).to include(['Fill first', 'single'], ['Theo hạn mức', 'quota_waterfall'])
     end
   end
 end

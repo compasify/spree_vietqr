@@ -1,0 +1,43 @@
+<% content_for :page_title do %>
+  VietQR
+<% end %>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
+  <div>
+    <h5 class="mb-1">Tài khoản nhận tiền VietQR</h5>
+  </div>
+  <%= link_to 'Phương thức thanh toán', admin_payment_methods_path, class: 'btn btn-outline-secondary mt-3 mt-lg-0' %>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Phương thức thanh toán</th>
+          <th>Provider đang bật</th>
+          <th>Cách chọn</th>
+          <th>Tài khoản</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @payment_methods.each do |payment_method| %>
+          <% accounts = payment_method.receiving_accounts.to_a %>
+          <% active_accounts = accounts.select(&:active?) %>
+          <tr>
+            <td><%= payment_method.name %></td>
+            <td><%= safe_join(active_accounts.map(&:provider).uniq.map { |provider| content_tag(:code, provider) }, ' ') %></td>
+            <td><code><%= payment_method.account_routing_strategy %></code></td>
+            <td><%= active_accounts.size %> / <%= accounts.size %></td>
+            <td class="text-right">
+              <%= link_to 'Quản lý', admin_payment_method_vietqr_receiving_accounts_path(payment_method), class: 'btn btn-sm btn-primary' %>
+              <%= link_to 'Thêm', new_admin_payment_method_vietqr_receiving_account_path(payment_method), class: 'btn btn-sm btn-outline-primary' %>
+              <%= link_to 'Cài đặt', edit_admin_payment_method_path(payment_method), class: 'btn btn-sm btn-outline-secondary' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

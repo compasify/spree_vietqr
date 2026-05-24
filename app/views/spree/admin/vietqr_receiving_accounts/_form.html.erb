@@ -1,0 +1,269 @@
+<% if @account.errors.any? %>
+  <div class="alert alert-danger">
+    <strong>Không lưu được tài khoản:</strong>
+    <ul class="mb-0">
+      <% @account.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<% vietqr_webhook_base_url = "#{request.base_url}/webhooks/payments" %>
+
+<%= form_with model: @account,
+              scope: :receiving_account,
+              url: @account.persisted? ? admin_payment_method_vietqr_receiving_account_path(@payment_method, @account) : admin_payment_method_vietqr_receiving_accounts_path(@payment_method),
+              method: @account.persisted? ? :patch : :post,
+              local: true do |f| %>
+  <div class="card mb-4" data-vietqr-webhook-card>
+    <div class="card-header bg-light"><strong>Thông tin tài khoản</strong></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <%= f.label :provider, 'Provider' %>
+          <%= f.select :provider,
+                       options_for_select(Spree::PaymentMethod::Vietqr.provider_options, @account.provider),
+                       {},
+                       class: 'form-control custom-select',
+                       data: { vietqr_account_provider_select: true } %>
+        </div>
+        <div class="col-md-6 form-group">
+          <%= f.label :keyword_init, 'Keyword init' %>
+          <%= f.text_field :keyword_init, class: 'form-control', placeholder: 'VD: DH, DJ' %>
+          <small class="form-text text-muted">Chỉ để quản lý cấu hình provider/webhook. Webhook vẫn được khớp theo mã đơn thực tế.</small>
+        </div>
+      </div>
+
+      <div class="form-group" data-vietqr-bank-selector>
+        <label for="vietqr-bank-select">Ngân hàng</label>
+        <select id="vietqr-bank-select" class="form-control custom-select" data-vietqr-bank-select>
+          <option value="">Đang tải danh sách ngân hàng...</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <%= f.label :bank_bin, 'BIN ngân hàng' %>
+          <%= f.text_field :bank_bin, class: 'form-control', required: true, data: { vietqr_bank_bin: true } %>
+        </div>
+        <div class="col-md-6 form-group">
+          <%= f.label :bank_name, 'Tên ngân hàng' %>
+          <%= f.text_field :bank_name, class: 'form-control', data: { vietqr_bank_name: true } %>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <%= f.label :account_number, 'Số tài khoản' %>
+          <%= f.text_field :account_number, class: 'form-control', required: true %>
+        </div>
+        <div class="col-md-6 form-group">
+          <%= f.label :account_name, 'Chủ tài khoản' %>
+          <%= f.text_field :account_name, class: 'form-control', required: true %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Hạn mức</strong></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <%= f.label :monthly_quota_amount, 'Hạn mức tháng' %>
+          <%= f.number_field :monthly_quota_amount, class: 'form-control', min: 0 %>
+        </div>
+        <div class="col-md-6 form-group">
+          <%= f.label :monthly_threshold_amount, 'Ngưỡng chuyển tài khoản' %>
+          <%= f.number_field :monthly_threshold_amount, class: 'form-control', min: 0 %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Webhook</strong></div>
+    <div class="card-body">
+      <div class="alert alert-info">
+        Tự động xác nhận chỉ chạy khi webhook đúng provider, đúng mã đơn, đúng số tiền và đúng tài khoản đã cấp phát. Nếu webhook không về hoặc sai số tiền, admin xác nhận thủ công trên đơn/webhook.
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6 form-group mb-md-0" data-vietqr-provider-help="sepay">
+          <label for="vietqr-webhook-url-sepay">Webhook URL SePay</label>
+          <div class="input-group">
+            <input id="vietqr-webhook-url-sepay" type="text" class="form-control" value="<%= vietqr_webhook_base_url %>/sepay" readonly data-vietqr-copy-source="sepay">
+            <div class="input-group-append">
+              <button type="button" class="btn btn-outline-secondary" data-vietqr-copy-button="sepay">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 form-group mb-md-0" data-vietqr-provider-help="payos">
+          <label for="vietqr-webhook-url-payos">Webhook URL PayOS</label>
+          <div class="input-group">
+            <input id="vietqr-webhook-url-payos" type="text" class="form-control" value="<%= vietqr_webhook_base_url %>/payos" readonly data-vietqr-copy-source="payos">
+            <div class="input-group-append">
+              <button type="button" class="btn btn-outline-secondary" data-vietqr-copy-button="payos">Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 form-group" data-vietqr-provider-fields="sepay">
+          <%= f.label :webhook_secret, '(SePay) Mã bí mật webhook' %>
+          <%= f.text_field :webhook_secret,
+                           class: 'form-control vietqr-secret-field',
+                           value: @account.webhook_secret,
+                           autocomplete: 'off',
+                           spellcheck: false,
+                           style: '-webkit-text-security: disc;',
+                           data: { vietqr_required_for: 'sepay' } %>
+        </div>
+        <div class="col-md-4 form-group" data-vietqr-provider-fields="payos">
+          <%= f.label :payos_client_id, '(PayOS) Client ID' %>
+          <%= f.text_field :payos_client_id, class: 'form-control', data: { vietqr_required_for: 'payos' } %>
+        </div>
+        <div class="col-md-4 form-group" data-vietqr-provider-fields="payos">
+          <%= f.label :payos_api_key, '(PayOS) API key' %>
+          <%= f.text_field :payos_api_key,
+                           class: 'form-control vietqr-secret-field',
+                           value: @account.payos_api_key,
+                           autocomplete: 'off',
+                           spellcheck: false,
+                           style: '-webkit-text-security: disc;',
+                           data: { vietqr_required_for: 'payos' } %>
+        </div>
+        <div class="col-md-4 form-group" data-vietqr-provider-fields="payos">
+          <%= f.label :payos_checksum_key, '(PayOS) Checksum key' %>
+          <%= f.text_field :payos_checksum_key,
+                           class: 'form-control vietqr-secret-field',
+                           value: @account.payos_checksum_key,
+                           autocomplete: 'off',
+                           spellcheck: false,
+                           style: '-webkit-text-security: disc;',
+                           data: { vietqr_required_for: 'payos' } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-check mb-3">
+    <%= f.check_box :active, class: 'form-check-input' %>
+    <%= f.label :active, 'Đang bật', class: 'form-check-label' %>
+  </div>
+
+  <%= f.submit 'Lưu tài khoản', class: 'btn btn-primary' %>
+  <%= link_to 'Hủy', admin_payment_method_vietqr_receiving_accounts_path(@payment_method), class: 'btn btn-link' %>
+<% end %>
+
+<script>
+  (() => {
+    const setup = () => {
+      const select = document.querySelector('[data-vietqr-bank-select]');
+      const binInput = document.querySelector('[data-vietqr-bank-bin="true"]');
+      const nameInput = document.querySelector('[data-vietqr-bank-name="true"]');
+      const providerSelect = document.querySelector('[data-vietqr-account-provider-select="true"]');
+
+      const syncProviderFields = () => {
+        const provider = providerSelect ? providerSelect.value : 'manual';
+        const webhookCard = document.querySelector('[data-vietqr-webhook-card]');
+        if (webhookCard) {
+          webhookCard.classList.toggle('d-none', provider === 'manual');
+          webhookCard.classList.toggle('hidden', provider === 'manual');
+        }
+
+        document.querySelectorAll('[data-vietqr-provider-fields], [data-vietqr-provider-help]').forEach((element) => {
+          const visible = element.dataset.vietqrProviderFields === provider || element.dataset.vietqrProviderHelp === provider;
+          element.classList.toggle('d-none', !visible);
+          element.classList.toggle('hidden', !visible);
+        });
+        document.querySelectorAll('[data-vietqr-required-for]').forEach((control) => {
+          control.required = control.dataset.vietqrRequiredFor === provider;
+        });
+      };
+
+      if (providerSelect && providerSelect.dataset.bound !== 'true') {
+        providerSelect.dataset.bound = 'true';
+        providerSelect.addEventListener('change', syncProviderFields);
+      }
+      syncProviderFields();
+
+      document.querySelectorAll('[data-vietqr-copy-button]').forEach((button) => {
+        if (button.dataset.bound === 'true') return;
+
+        button.dataset.bound = 'true';
+        button.addEventListener('click', () => {
+          const source = document.querySelector(`[data-vietqr-copy-source="${button.dataset.vietqrCopyButton}"]`);
+          if (!source) return;
+
+          source.select();
+          source.setSelectionRange(0, source.value.length);
+
+          const resetText = () => setTimeout(() => { button.textContent = 'Copy'; }, 1200);
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(source.value).then(() => {
+              button.textContent = 'Đã copy';
+              resetText();
+            });
+          } else {
+            document.execCommand('copy');
+            button.textContent = 'Đã copy';
+            resetText();
+          }
+        });
+      });
+
+      if (!select || !binInput || !nameInput || select.dataset.loaded === 'true') return;
+
+      const normalize = (value) => (value || '').toString().trim().toLowerCase();
+      const labelFor = (bank) => `${bank.shortName || bank.short_name || bank.code} - ${bank.bin}`;
+
+      const selectBank = (bank, updateFields = true) => {
+        select.value = bank ? bank.bin : '';
+        if (!bank || !updateFields) return;
+
+        binInput.value = bank.bin || '';
+        nameInput.value = bank.shortName || bank.short_name || bank.name || '';
+      };
+
+      const syncFromFields = (banks) => {
+        const bin = normalize(binInput.value);
+        const name = normalize(nameInput.value);
+        const bank = banks.find((item) => normalize(item.bin) === bin) ||
+          banks.find((item) => [item.shortName, item.short_name, item.name, item.code].some((value) => normalize(value) === name)) ||
+          banks.find((item) => name && [item.shortName, item.short_name, item.name, item.code].some((value) => normalize(value).includes(name)));
+
+        selectBank(bank, false);
+      };
+
+      fetch('https://api.vietqr.io/v2/banks')
+        .then((response) => response.json())
+        .then((payload) => {
+          const banks = Array.isArray(payload.data) ? payload.data : [];
+          select.innerHTML = '<option value="">Chọn ngân hàng</option>';
+
+          banks.forEach((bank) => {
+            const option = document.createElement('option');
+            option.value = bank.bin;
+            option.textContent = labelFor(bank);
+            select.appendChild(option);
+          });
+
+          select.addEventListener('change', () => {
+            selectBank(banks.find((bank) => bank.bin === select.value));
+          });
+          binInput.addEventListener('input', () => syncFromFields(banks));
+          nameInput.addEventListener('input', () => syncFromFields(banks));
+          syncFromFields(banks);
+          select.dataset.loaded = 'true';
+        })
+        .catch(() => {
+          select.innerHTML = '<option value="">Không tải được danh sách ngân hàng</option>';
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', setup);
+    document.addEventListener('turbo:load', setup);
+    setup();
+  })();
+</script>
