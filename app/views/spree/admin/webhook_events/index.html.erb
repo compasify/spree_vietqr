@@ -2,57 +2,21 @@
   Webhook VietQR
 <% end %>
 
-<div class="row mb-4">
-  <div class="col-md-4">
-    <div class="card"><div class="card-body"><strong><%= @stats[:total_today] %></strong><br>Tổng hôm nay</div></div>
+<div class="space-y-6">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div class="bg-white border rounded-lg p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase">Tổng hôm nay</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @stats[:total_today] %></p>
+    </div>
+    <div class="bg-white border rounded-lg p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase">Đã xác nhận hôm nay</p>
+      <p class="text-2xl font-bold text-green-600"><%= @stats[:confirmed_today] %></p>
+    </div>
+    <div class="bg-white border rounded-lg p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase">Chưa khớp</p>
+      <p class="text-2xl font-bold text-amber-600"><%= @stats[:unmatched] %></p>
+    </div>
   </div>
-  <div class="col-md-4">
-    <div class="card"><div class="card-body"><strong><%= @stats[:confirmed_today] %></strong><br>Đã xác nhận hôm nay</div></div>
-  </div>
-  <div class="col-md-4">
-    <div class="card"><div class="card-body"><strong><%= @stats[:unmatched] %></strong><br>Chưa khớp</div></div>
-  </div>
+
+  <%= render_table @collection, :vietqr_webhook_events %>
 </div>
-
-<%= form_with url: admin_webhook_events_path, method: :get, local: true, class: 'mb-3' do %>
-  <div class="row">
-    <div class="col-md-3">
-      <%= select_tag :provider, options_for_select([['Tất cả nhà cung cấp', ''], ['SePay', 'sepay'], ['PayOS', 'payos']], params[:provider]), class: 'form-control' %>
-    </div>
-    <div class="col-md-3">
-      <%= select_tag :status, options_for_select([['Tất cả trạng thái', '']] + SpreeVietqr::WebhookEvent::STATUSES.map { |status| [status, status] }, params[:status]), class: 'form-control' %>
-    </div>
-    <div class="col-md-2">
-      <%= submit_tag 'Lọc', class: 'btn btn-primary' %>
-    </div>
-  </div>
-<% end %>
-
-<table class="table">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Nhà cung cấp</th>
-      <th>Trạng thái</th>
-      <th>Số tiền</th>
-      <th>Đơn hàng</th>
-      <th>Ngày tạo</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% @events.each do |event| %>
-      <tr>
-        <td><%= event.id %></td>
-        <td><%= event.provider %></td>
-        <td><%= event.status %></td>
-        <td><%= number_with_delimiter(event.amount_cents) if event.amount_cents %></td>
-        <td><%= event.matched_order_number || event.parsed_order_code %></td>
-        <td><%= l(event.created_at, format: :short) %></td>
-        <td><%= link_to 'Xem', admin_webhook_event_path(event), class: 'btn btn-sm btn-outline-primary' %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
-
-<%= paginate @events if respond_to?(:paginate) %>

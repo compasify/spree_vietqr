@@ -57,6 +57,14 @@ module Spree
       'vietqr'
     end
 
+    def payment_icon_name
+      'vietqr'
+    end
+
+    def description_partial_name
+      'vietqr'
+    end
+
     def account_routing_strategy
       preferred_account_routing_strategy.to_s.presence || 'single'
     end

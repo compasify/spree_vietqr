@@ -94,6 +94,7 @@
     <strong>Tài khoản nhận tiền</strong>
     <% if f.object.persisted? %>
       <span>
+        <%= link_to 'Webhook Events', admin_webhook_events_path(q: { payment_method_id_eq: f.object.id }), class: 'btn btn-sm btn-outline-secondary mr-2' %>
         <%= link_to 'Quản lý', admin_payment_method_vietqr_receiving_accounts_path(f.object), class: 'btn btn-sm btn-outline-secondary mr-2' %>
         <%= link_to 'Thêm', new_admin_payment_method_vietqr_receiving_account_path(f.object), class: 'btn btn-sm btn-primary' %>
       </span>

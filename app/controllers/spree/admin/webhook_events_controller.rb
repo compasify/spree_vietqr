@@ -3,11 +3,19 @@
 module Spree
   module Admin
     class WebhookEventsController < Spree::Admin::BaseController
+      include Spree::Admin::TableConcern
+      include Pagy::Method
+
+      use_table :vietqr_webhook_events
+
       def index
-        @events = SpreeVietqr::WebhookEvent.recent
-        @events = @events.for_provider(params[:provider]) if params[:provider].present?
-        @events = @events.where(status: params[:status]) if params[:status].present?
-        @events = @events.page(params[:page]).per(50) if @events.respond_to?(:page)
+        @search = SpreeVietqr::WebhookEvent.ransack(params[:q])
+        @search.sorts = 'created_at desc' if @search.sorts.empty?
+
+        process_table_query_state if table_registered?
+
+        result = @search.result(distinct: true)
+        @pagy, @collection = pagy(result, limit: 50)
 
         @stats = {
           total_today: SpreeVietqr::WebhookEvent.where('created_at > ?', Time.current.beginning_of_day).count,

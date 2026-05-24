@@ -18,6 +18,17 @@ module SpreeVietqr
     scope :unmatched, -> { where(status: 'unmatched') }
     scope :for_provider, ->(provider) { where(provider: provider) }
 
+    def self.ransackable_attributes(auth_object = nil)
+      %w[
+        id provider status amount_cents matched_order_number parsed_order_code
+        provider_transaction_id payment_method_id created_at processed_at error_message
+      ]
+    end
+
+    def self.ransackable_associations(auth_object = nil)
+      %w[payment payment_method receiving_account payment_allocation]
+    end
+
     def duplicate?
       return false if provider_transaction_id.blank?
 

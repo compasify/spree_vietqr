@@ -11,6 +11,18 @@ RSpec.describe Spree::PaymentMethod::Vietqr do
     end
   end
 
+  describe '#payment_icon_name' do
+    it 'uses the VietQR payment icon' do
+      expect(payment_method.payment_icon_name).to eq('vietqr')
+    end
+  end
+
+  describe '#description_partial_name' do
+    it 'uses the VietQR admin description partial' do
+      expect(payment_method.description_partial_name).to eq('vietqr')
+    end
+  end
+
   describe '#source_required?' do
     it 'returns false' do
       expect(payment_method.source_required?).to be false

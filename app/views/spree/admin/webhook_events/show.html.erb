@@ -2,42 +2,79 @@
   Webhook VietQR #<%= @event.id %>
 <% end %>
 
-<div class="card mb-4">
-  <div class="card-body">
-    <dl class="row">
-      <dt class="col-sm-3">Nhà cung cấp</dt><dd class="col-sm-9"><%= @event.provider %></dd>
-      <dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9"><%= @event.status %></dd>
-      <dt class="col-sm-3">Transaction ID</dt><dd class="col-sm-9"><%= @event.provider_transaction_id %></dd>
-      <dt class="col-sm-3">Số tiền</dt><dd class="col-sm-9"><%= number_with_delimiter(@event.amount_cents) if @event.amount_cents %></dd>
-      <dt class="col-sm-3">Đơn đọc được</dt><dd class="col-sm-9"><%= @event.parsed_order_code %></dd>
-      <dt class="col-sm-3">Đơn đã khớp</dt><dd class="col-sm-9"><%= @event.matched_order_number %></dd>
-      <dt class="col-sm-3">Tài khoản nhận</dt><dd class="col-sm-9"><%= @event.receiving_account&.account_number || @event.account_number %></dd>
-      <dt class="col-sm-3">Allocation</dt><dd class="col-sm-9"><%= @event.payment_allocation_id %></dd>
-      <dt class="col-sm-3">Link thanh toán</dt><dd class="col-sm-9"><%= @event.payment_link_id %></dd>
-      <dt class="col-sm-3">Lỗi</dt><dd class="col-sm-9"><%= @event.error_message %></dd>
+<div class="space-y-6">
+  <div class="bg-white border rounded-lg p-6">
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Nhà cung cấp</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.provider %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Trạng thái</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.status %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Transaction ID</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.provider_transaction_id.presence || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Số tiền</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.amount_cents.present? ? number_with_delimiter(@event.amount_cents) : '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Đơn đọc được</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.parsed_order_code.presence || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Đơn đã khớp</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.matched_order_number.presence || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Tài khoản nhận</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.receiving_account&.account_number || @event.account_number || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Allocation</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.payment_allocation_id || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Link thanh toán</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.payment_link_id.presence || '—' %></dd>
+      </div>
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Lỗi</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @event.error_message.presence || '—' %></dd>
+      </div>
     </dl>
   </div>
-</div>
 
-<% if @event.status.in?(%w[unmatched error]) %>
-  <div class="card mb-4">
-    <div class="card-body">
-      <%= form_with url: manual_match_admin_webhook_event_path(@event), method: :post, local: true, class: 'mb-3' do %>
-        <div class="input-group">
-          <%= text_field_tag :order_number, @event.parsed_order_code, class: 'form-control', placeholder: 'Mã đơn hàng' %>
-          <%= submit_tag 'Khớp thủ công', class: 'btn btn-primary' %>
+  <% if @event.status.in?(%w[unmatched error]) %>
+    <div class="bg-white border rounded-lg p-6 space-y-4">
+      <h3 class="text-lg font-medium">Thao tác</h3>
+
+      <%= form_with url: manual_match_admin_webhook_event_path(@event), method: :post, local: true, class: 'space-y-3' do %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Mã đơn hàng</label>
+          <%= text_field_tag :order_number, @event.parsed_order_code, class: 'w-full border border-gray-300 rounded-md px-3 py-2 text-sm', placeholder: 'Mã đơn hàng' %>
         </div>
+        <%= submit_tag 'Khớp thủ công', class: 'btn btn-primary px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer' %>
       <% end %>
 
-      <%= button_to 'Xử lý lại', retry_processing_admin_webhook_event_path(@event), method: :post, class: 'btn btn-outline-secondary' %>
+      <%= button_to 'Xử lý lại', retry_processing_admin_webhook_event_path(@event), method: :post, class: 'inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' %>
     </div>
+  <% end %>
+
+  <div class="space-y-3">
+    <h3 class="text-lg font-medium">Payload gốc</h3>
+    <pre class="rounded-lg border bg-gray-50 p-4 text-sm overflow-x-auto"><%= JSON.pretty_generate(@event.raw_payload || {}) %></pre>
   </div>
-<% end %>
 
-<h5>Payload gốc</h5>
-<pre class="bg-light p-3"><%= JSON.pretty_generate(@event.raw_payload || {}) %></pre>
+  <div class="space-y-3">
+    <h3 class="text-lg font-medium">Header gốc</h3>
+    <pre class="rounded-lg border bg-gray-50 p-4 text-sm overflow-x-auto"><%= JSON.pretty_generate(@event.raw_headers || {}) %></pre>
+  </div>
 
-<h5>Header gốc</h5>
-<pre class="bg-light p-3"><%= JSON.pretty_generate(@event.raw_headers || {}) %></pre>
-
-<%= link_to 'Quay lại', admin_webhook_events_path, class: 'btn btn-link' %>
+  <div>
+    <%= link_to 'Quay lại', admin_webhook_events_path, class: 'text-primary hover:underline text-sm' %>
+  </div>
+</div>
