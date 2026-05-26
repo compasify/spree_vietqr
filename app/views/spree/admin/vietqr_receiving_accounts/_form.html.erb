@@ -16,7 +16,7 @@
               url: @account.persisted? ? admin_payment_method_vietqr_receiving_account_path(@payment_method, @account) : admin_payment_method_vietqr_receiving_accounts_path(@payment_method),
               method: @account.persisted? ? :patch : :post,
               local: true do |f| %>
-  <div class="card mb-4" data-vietqr-webhook-card>
+  <div class="card mb-4">
     <div class="card-header bg-light"><strong>Thông tin tài khoản</strong></div>
     <div class="card-body">
       <div class="row">
@@ -82,7 +82,7 @@
     </div>
   </div>
 
-  <div class="card mb-4">
+  <div class="card mb-4" data-vietqr-webhook-card>
     <div class="card-header bg-light"><strong>Webhook</strong></div>
     <div class="card-body">
       <div class="alert alert-info">
@@ -166,10 +166,10 @@
 
       const syncProviderFields = () => {
         const provider = providerSelect ? providerSelect.value : 'manual';
-        const webhookCard = document.querySelector('[data-vietqr-webhook-card]');
-        if (webhookCard) {
-          webhookCard.classList.toggle('d-none', provider === 'manual');
-          webhookCard.classList.toggle('hidden', provider === 'manual');
+        const webhookSection = document.querySelector('[data-vietqr-webhook-card]');
+        if (webhookSection) {
+          webhookSection.classList.toggle('d-none', provider === 'manual');
+          webhookSection.classList.toggle('hidden', provider === 'manual');
         }
 
         document.querySelectorAll('[data-vietqr-provider-fields], [data-vietqr-provider-help]').forEach((element) => {

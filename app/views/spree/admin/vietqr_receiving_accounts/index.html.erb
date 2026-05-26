@@ -40,6 +40,7 @@
       </thead>
       <tbody>
         <% accounts.each do |account| %>
+          <% has_allocations = account.payment_allocations.exists? %>
           <tr>
             <td>
               <%= form_with scope: :receiving_account,
@@ -83,14 +84,14 @@
             <td><%= number_with_delimiter(account.period_confirmed_amount) %></td>
             <td class="text-right">
               <%= link_to 'Sửa', edit_admin_payment_method_vietqr_receiving_account_path(@payment_method, account), class: 'btn btn-sm btn-outline-secondary' %>
-              <% unless account.payment_allocations.exists? %>
-                <%= button_to 'Xóa',
-                              admin_payment_method_vietqr_receiving_account_path(@payment_method, account),
-                              method: :delete,
-                              class: 'btn btn-sm btn-outline-danger',
-                              form: { class: 'd-inline' },
-                              data: { turbo_confirm: 'Tiếp tục?' } %>
-              <% end %>
+              <%= button_to(has_allocations ? 'Tắt' : 'Xóa',
+                            admin_payment_method_vietqr_receiving_account_path(@payment_method, account),
+                            method: :delete,
+                            class: "btn btn-sm #{has_allocations ? 'btn-outline-warning' : 'btn-outline-danger'}",
+                            form: { class: 'd-inline' },
+                            data: {
+                              turbo_confirm: has_allocations ? 'Tài khoản này đã có giao dịch. Tiếp tục sẽ tắt tài khoản thay vì xóa. Bạn có chắc không?' : 'Tiếp tục xóa tài khoản này?'
+                            }) %>
             </td>
           </tr>
         <% end %>
