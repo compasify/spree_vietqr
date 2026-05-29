@@ -2,6 +2,8 @@
 
 module SpreeVietqr
   class PaymentInfo
+    PAYABLE_PAYMENT_STATES = %w[checkout pending processing].freeze
+
     attr_reader :qr_url, :bank_name, :account_number, :account_name,
                 :amount, :transfer_content, :order_number, :checkout_url, :payment_link_id
 
@@ -31,7 +33,7 @@ module SpreeVietqr
     # @param payment_method [Spree::PaymentMethod::Vietqr]
     # @param order [Spree::Order]
     def initialize(payment_method:, order:, request_base_url: nil)
-      payment = find_payable_payment!(payment_method: payment_method, order: order)
+      payment = self.class.find_payable_payment!(payment_method: payment_method, order: order)
       allocation = AllocatePaymentAccount.new(
         payment_method: payment_method,
         order: order,
@@ -65,21 +67,37 @@ module SpreeVietqr
       }.compact
     end
 
+    def self.find_payable_payment(payment_method:, order:)
+      payment_from_active_allocation(payment_method: payment_method, order: order) ||
+        order.payments
+             .where(payment_method: payment_method, state: PAYABLE_PAYMENT_STATES)
+             .order(:id)
+             .last
+    end
+
+    def self.find_payable_payment!(payment_method:, order:)
+      payment = find_payable_payment(payment_method: payment_method, order: order)
+      return payment if payment
+
+      raise ActiveRecord::RecordNotFound, 'No pending VietQR payment found for this order'
+    end
+
     private
 
     def resolve_bank_name(bin)
       BANK_NAMES[bin] || "Bank #{bin}"
     end
 
-    def find_payable_payment!(payment_method:, order:)
-      payment = order.payments
-                     .where(payment_method: payment_method)
-                     .where(state: %w[checkout pending processing])
-                     .order(:id)
-                     .last
-      return payment if payment
+    def self.payment_from_active_allocation(payment_method:, order:)
+      return unless defined?(PaymentAllocation)
 
-      raise ActiveRecord::RecordNotFound, 'No pending VietQR payment found for this order'
+      allocation = PaymentAllocation.active
+                                   .where(order: order, payment_method: payment_method)
+                                   .ordered_recently
+                                   .includes(:payment)
+                                   .detect { |record| record.payment&.state.in?(PAYABLE_PAYMENT_STATES) }
+
+      allocation&.payment
     end
   end
 end

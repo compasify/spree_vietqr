@@ -54,4 +54,49 @@ RSpec.describe SpreeVietqr::AllocatePaymentAccount do
       expect(allocator.send(:refresh_existing_allocation!, allocation)).to eq(allocation)
     end
   end
+
+  describe '#release_replaced_allocations!' do
+    let(:payment_method) { double('PaymentMethod') }
+    let(:current_payment) { double('Spree::Payment', id: 42) }
+    let(:payments_relation) { double('PaymentsRelation') }
+    let(:stale_payments_scope) { double('StalePaymentsScope') }
+    let(:where_chain) { double('WhereChain') }
+    let(:replaced_payments) { double('ReplacedPayments') }
+    let(:stale_payment) { double('Spree::Payment', can_void?: true) }
+    let(:unvoidable_payment) { double('Spree::Payment', can_void?: false) }
+
+    subject(:allocator) do
+      described_class.new(
+        payment_method: payment_method,
+        order: order,
+        payment: current_payment
+      )
+    end
+
+    before do
+      stub_const('SpreeVietqr::PaymentAllocation', Class.new do
+        def self.active; end
+      end)
+      allocation_scope = double('AllocationScope').as_null_object
+      allow(SpreeVietqr::PaymentAllocation).to receive(:active).and_return(allocation_scope)
+      allow(allocation_scope).to receive(:where).with(order: order, payment_method: payment_method).and_return(allocation_scope)
+      allow(allocation_scope).to receive(:where).and_return(allocation_scope)
+      allow(allocation_scope).to receive(:find_each)
+
+      allow(order).to receive(:payments).and_return(payments_relation)
+      allow(payments_relation).to receive(:where)
+        .with(payment_method: payment_method, state: SpreeVietqr::PaymentInfo::PAYABLE_PAYMENT_STATES)
+        .and_return(stale_payments_scope)
+      allow(stale_payments_scope).to receive(:where).with(no_args).and_return(where_chain)
+      allow(where_chain).to receive(:not).with(id: 42).and_return(replaced_payments)
+      allow(replaced_payments).to receive(:find_each).and_yield(stale_payment).and_yield(unvoidable_payment)
+    end
+
+    it 'voids older payable VietQR payments for the same order' do
+      expect(stale_payment).to receive(:void!)
+      expect(unvoidable_payment).not_to receive(:void!)
+
+      allocator.send(:release_replaced_allocations!)
+    end
+  end
 end

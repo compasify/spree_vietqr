@@ -4,6 +4,11 @@ module SpreeVietqr
   class AllocatePaymentAccount
     DEFAULT_PAYMENT_TIMEOUT_MINUTES = 10
 
+    def self.payment_timeout_minutes
+      explicit_timeout = ENV['MMO_ORDER_EXPIRY_MINUTES'].presence
+      explicit_timeout.present? ? explicit_timeout.to_i : DEFAULT_PAYMENT_TIMEOUT_MINUTES
+    end
+
     def initialize(payment_method:, order:, payment:, request_base_url: nil)
       @payment_method = payment_method
       @order = order
@@ -122,6 +127,14 @@ module SpreeVietqr
       PaymentAllocation.active.where(order: @order, payment_method: @payment_method).where.not(payment: @payment).find_each do |allocation|
         ReleasePaymentAllocation.new.call(allocation: allocation, reason: 'payment_replaced')
       end
+
+      @order.payments
+            .where(payment_method: @payment_method, state: PaymentInfo::PAYABLE_PAYMENT_STATES)
+            .where
+            .not(id: @payment.id)
+            .find_each do |payment|
+        payment.void! if payment.can_void?
+      end
     end
 
     def refresh_existing_allocation!(allocation)
@@ -138,7 +151,7 @@ module SpreeVietqr
     end
 
     def expires_at
-      @order.created_at + DEFAULT_PAYMENT_TIMEOUT_MINUTES.minutes
+      @order.created_at + self.class.payment_timeout_minutes.minutes
     end
 
     def default_return_url

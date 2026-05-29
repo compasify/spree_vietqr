@@ -27,6 +27,7 @@ RSpec.describe SpreeVietqr::PaymentInfo do
   let(:bank_bin) { '970422' }
   let(:account_number) { '0123456789' }
   let(:account_name) { 'NGUYEN VAN A' }
+  let(:allocation_relation) { double('AllocationRelation') }
 
   let(:order) do
     double("Spree::Order", number: "R123456789", total: 250_000, payments: payments_relation)
@@ -35,6 +36,14 @@ RSpec.describe SpreeVietqr::PaymentInfo do
   subject { described_class.new(payment_method: payment_method, order: order) }
 
   before do
+    stub_const('SpreeVietqr::PaymentAllocation', Class.new do
+      def self.active; end
+    end)
+    allow(SpreeVietqr::PaymentAllocation).to receive(:active).and_return(allocation_relation)
+    allow(allocation_relation).to receive(:where).with(order: order, payment_method: payment_method).and_return(allocation_relation)
+    allow(allocation_relation).to receive(:ordered_recently).and_return(allocation_relation)
+    allow(allocation_relation).to receive(:includes).with(:payment).and_return(allocation_relation)
+    allow(allocation_relation).to receive(:detect).and_return(nil)
     allow(payments_relation).to receive(:where).and_return(payments_relation)
     allow(payments_relation).to receive(:order).with(:id).and_return(payments_relation)
     allow(payments_relation).to receive(:last).and_return(payment)
@@ -56,6 +65,17 @@ RSpec.describe SpreeVietqr::PaymentInfo do
         transfer_content: "MMOR123456789",
         order_number: "R123456789"
       )
+    end
+  end
+
+  describe '.find_payable_payment' do
+    it 'prefers the payment referenced by the active allocation' do
+      allocated_payment = double('Spree::Payment', state: 'pending')
+      active_allocation = double('SpreeVietqr::PaymentAllocation', payment: allocated_payment)
+
+      allow(allocation_relation).to receive(:detect).and_return(active_allocation)
+
+      expect(described_class.find_payable_payment(payment_method: payment_method, order: order)).to eq(allocated_payment)
     end
   end
 
