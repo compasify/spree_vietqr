@@ -65,6 +65,8 @@ module Spree
 
         if allocation && confirmer.call(allocation: allocation, webhook_event: @event)
           flash[:success] = "Re-processed: payment confirmed for #{allocation.order_number}"
+        elsif (topup = retry_topup_confirmation(transaction))
+          flash[:success] = "Re-processed: topup confirmed for request ##{topup.id}"
         else
           @event.mark_status!('unmatched') unless allocation
           flash[:warning] = 'Re-processed: no matching payable order found'
@@ -112,6 +114,12 @@ module Spree
         virtual_account_matches = allocation.virtual_account_number.blank? || (@event.virtual_account_number.present? && SpreeVietqr::AccountIdentifier.normalize_number(allocation.virtual_account_number) == SpreeVietqr::AccountIdentifier.normalize_number(@event.virtual_account_number))
 
         account_matches && bank_matches && sub_account_matches && virtual_account_matches
+      end
+
+      def retry_topup_confirmation(transaction)
+        return nil unless defined?(Mmo::AutoConfirmTopupFromWebhook)
+
+        Mmo::AutoConfirmTopupFromWebhook.new.call(transaction: transaction, webhook_event: @event)
       end
     end
   end

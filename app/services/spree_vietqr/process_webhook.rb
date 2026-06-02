@@ -41,6 +41,8 @@ module SpreeVietqr
 
       allocation = MatchTransaction.new(payment_method: @payment_method, receiving_account: @receiving_account).call(transaction)
       unless allocation
+        return success_result if confirm_topup(transaction, event)
+
         event.mark_status!('unmatched')
         return success_result
       end
@@ -93,6 +95,12 @@ module SpreeVietqr
 
     def success_result
       { status: @provider.success_status, body: @provider.success_response }
+    end
+
+    def confirm_topup(transaction, event)
+      return nil unless defined?(Mmo::AutoConfirmTopupFromWebhook)
+
+      Mmo::AutoConfirmTopupFromWebhook.new.call(transaction: transaction, webhook_event: event)
     end
   end
 end
