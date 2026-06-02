@@ -147,7 +147,7 @@ module SpreeVietqr
 
     def transfer_content(account)
       prefix = account&.keyword_init.to_s.strip.presence || 'MMO'
-      "#{prefix}#{@order.number}"
+      TransferContent.with_suffix("#{prefix}#{@order.number}")
     end
 
     def expires_at

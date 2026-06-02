@@ -51,7 +51,7 @@ module SpreeVietqr
     private
 
     def format_transfer_content(order)
-      "MMO#{order.number}"
+      TransferContent.with_suffix("MMO#{order.number}")
     end
 
     def build_url(bank_bin:, account_number:, account_name:, amount:, transfer_content:)

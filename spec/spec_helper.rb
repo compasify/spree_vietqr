@@ -42,6 +42,7 @@ end
 # Load services directly
 require_relative '../app/models/spree_vietqr/account_identifier'
 require_relative '../app/models/spree_vietqr/normalized_transaction'
+require_relative '../app/models/spree_vietqr/transfer_content'
 require_relative '../app/services/spree_vietqr/providers/base'
 require_relative '../app/services/spree_vietqr/providers/registry'
 require_relative '../app/services/spree_vietqr/match_transaction'
