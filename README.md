@@ -2,6 +2,14 @@
 
 VietQR payment extension for Spree Commerce. Gem này thêm payment method `Spree::PaymentMethod::Vietqr`, cho phép khách thanh toán chuyển khoản ngân hàng bằng QR code và tự động đối soát qua webhook SePay hoặc PayOS.
 
+> **Phiên bản Spree 5.** Source code ở tag `v0.1.0-spree5` (và nhánh `spree-5-stable`) chỉ dành cho **Spree 5.4+** với admin Rails (`spree_admin`). Dự án Spree 5 nên khóa gem theo tag này:
+>
+> ```ruby
+> gem 'spree_vietqr', github: 'compasify/spree_vietqr', tag: 'v0.1.0-spree5'
+> ```
+>
+> Bản dành cho Spree 6 nằm ở nhánh `master` từ phiên bản `1.0.0`.
+
 ## Tính năng hiện có
 
 - Payment method `vietqr` không cần payment source, không auto-capture khi checkout.
