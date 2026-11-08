@@ -8,7 +8,8 @@ RSpec.describe SpreeVietqr::GenerateQr do
   let(:payment_method) do
     double(
       "Spree::PaymentMethod::Vietqr",
-      active_receiving_accounts: [receiving_account]
+      active_receiving_accounts: [receiving_account],
+      transfer_content_prefix: 'MMO'
     )
   end
 

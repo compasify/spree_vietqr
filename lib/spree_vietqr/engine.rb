@@ -3,14 +3,11 @@
 module SpreeVietqr
   class Engine < ::Rails::Engine
     require 'spree/core'
+    require 'spree/api'
     require File.expand_path('../../app/middleware/spree_vietqr/raw_body_middleware', __dir__)
     isolate_namespace SpreeVietqr
 
     engine_name 'spree_vietqr'
-
-    initializer 'spree_vietqr.assets' do |app|
-      app.config.assets.precompile += %w[spree_vietqr_manifest spree_vietqr/application.css spree_vietqr/application.js] if app.config.respond_to?(:assets)
-    end
 
     initializer 'spree_vietqr.append_migrations' do |app|
       unless app.root.to_s.match?(root.to_s)
@@ -28,14 +25,12 @@ module SpreeVietqr
       end
     end
 
-    initializer 'spree_vietqr.providers' do
-      require_dependency 'spree_vietqr/providers/base'
-      require_dependency 'spree_vietqr/providers/registry'
-      require_dependency 'spree_vietqr/providers/sepay'
-      require_dependency 'spree_vietqr/providers/payos'
-
-      SpreeVietqr::Providers::Registry.register('sepay', SpreeVietqr::Providers::Sepay)
-      SpreeVietqr::Providers::Registry.register('payos', SpreeVietqr::Providers::Payos)
+    # Admin API keys (read_vietqr / write_vietqr) and the CanCanCan subjects
+    # they grant to staff roles.
+    initializer 'spree_vietqr.permissions' do
+      Spree.permissions.register_scope(:vietqr, group: :settings, resources: lambda {
+        [SpreeVietqr::ReceivingAccount, SpreeVietqr::WebhookEvent, SpreeVietqr::PaymentAllocation]
+      })
     end
 
     initializer 'spree_vietqr.mount_routes' do |app|
@@ -44,12 +39,13 @@ module SpreeVietqr
       end
     end
 
-    def self.activate
-      Dir.glob(File.join(File.dirname(__FILE__), '../../app/**/*_decorator*.rb')).sort.each do |c|
-        Rails.configuration.cache_classes ? require(c) : load(c)
-      end
+    config.after_initialize do
+      Spree.payment_methods << Spree::PaymentMethod::Vietqr unless Spree.payment_methods.include?(Spree::PaymentMethod::Vietqr)
     end
 
-    config.to_prepare(&method(:activate).to_proc)
+    config.to_prepare do
+      SpreeVietqr::Providers::Registry.register('sepay', SpreeVietqr::Providers::Sepay)
+      SpreeVietqr::Providers::Registry.register('payos', SpreeVietqr::Providers::Payos)
+    end
   end
 end

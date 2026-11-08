@@ -2,13 +2,6 @@
 
 module SpreeVietqr
   class AllocatePaymentAccount
-    DEFAULT_PAYMENT_TIMEOUT_MINUTES = 10
-
-    def self.payment_timeout_minutes
-      explicit_timeout = ENV['MMO_ORDER_EXPIRY_MINUTES'].presence
-      explicit_timeout.present? ? explicit_timeout.to_i : DEFAULT_PAYMENT_TIMEOUT_MINUTES
-    end
-
     def initialize(payment_method:, order:, payment:, request_base_url: nil)
       @payment_method = payment_method
       @order = order
@@ -36,7 +29,7 @@ module SpreeVietqr
     def validate_payment_binding!
       raise ArgumentError, 'Payment must belong to the order' unless @payment.order_id == @order.id
       raise ArgumentError, 'Payment must use the provided VietQR payment method' unless @payment.payment_method_id == @payment_method.id
-      raise ArgumentError, 'Payment is not payable' unless @payment.state.in?(%w[checkout pending processing])
+      raise ArgumentError, 'Payment is not payable' unless @payment.status.in?(Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES)
     end
 
     def build_allocation!
@@ -129,7 +122,7 @@ module SpreeVietqr
       end
 
       @order.payments
-            .where(payment_method: @payment_method, state: PaymentInfo::PAYABLE_PAYMENT_STATES)
+            .where(payment_method: @payment_method, status: Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES)
             .where
             .not(id: @payment.id)
             .find_each do |payment|
@@ -146,12 +139,14 @@ module SpreeVietqr
     end
 
     def transfer_content(account)
-      prefix = account&.keyword_init.to_s.strip.presence || 'MMO'
+      prefix = account&.keyword_init.to_s.strip.presence || @payment_method.transfer_content_prefix
       TransferContent.with_suffix("#{prefix}#{@order.number}")
     end
 
+    # Counted from when the QR is first shown, not from when the order was
+    # created: a POS sale or a long checkout may open its order well before.
     def expires_at
-      @order.created_at + self.class.payment_timeout_minutes.minutes
+      Time.current + @payment_method.payment_timeout_minutes.minutes
     end
 
     def default_return_url
@@ -163,7 +158,7 @@ module SpreeVietqr
     end
 
     def base_url
-      raw = @request_base_url.presence || Spree::Store.default&.url.presence || 'http://localhost:3000'
+      raw = @request_base_url.presence || @order.store&.url.presence || 'http://localhost:3000'
       raw.start_with?('http://', 'https://') ? raw : "https://#{raw}"
     end
   end

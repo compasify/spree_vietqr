@@ -2,10 +2,11 @@
 
 module SpreeVietqr
   class PaymentInfo
-    PAYABLE_PAYMENT_STATES = %w[checkout pending processing].freeze
+    PAYABLE_PAYMENT_STATES = Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES
 
     attr_reader :qr_url, :bank_name, :account_number, :account_name,
-                :amount, :transfer_content, :order_number, :checkout_url, :payment_link_id
+                :amount, :transfer_content, :order_number, :checkout_url, :payment_link_id,
+                :allocation
 
     BANK_NAMES = {
       "970422" => "MB Bank",
@@ -34,15 +35,16 @@ module SpreeVietqr
     # @param order [Spree::Order]
     def initialize(payment_method:, order:, request_base_url: nil)
       payment = self.class.find_payable_payment!(payment_method: payment_method, order: order)
-      allocation = AllocatePaymentAccount.new(
+      @allocation = AllocatePaymentAccount.new(
         payment_method: payment_method,
         order: order,
         payment: payment,
         request_base_url: request_base_url
       ).call
 
+      allocation = @allocation
       @qr_url = GenerateQr.new.call(payment_method: payment_method, order: order, allocation: allocation)
-      @bank_name = resolve_bank_name(allocation.bank_bin)
+      @bank_name = allocation.receiving_account&.bank_name.presence || resolve_bank_name(allocation.bank_bin)
       @account_number = allocation.account_number
       @account_name = allocation.account_name
       @amount = allocation.expected_amount.to_i
@@ -59,18 +61,21 @@ module SpreeVietqr
         account_number: account_number,
         account_name: account_name,
         amount: amount,
-        currency: "VND",
+        currency: allocation.order.currency.presence || "VND",
         transfer_content: transfer_content,
         order_number: order_number,
         checkout_url: checkout_url,
-        payment_link_id: payment_link_id
+        payment_link_id: payment_link_id,
+        status: allocation.status,
+        expires_at: allocation.expires_at&.iso8601,
+        payment_id: allocation.payment.prefixed_id
       }.compact
     end
 
     def self.find_payable_payment(payment_method:, order:)
       payment_from_active_allocation(payment_method: payment_method, order: order) ||
         order.payments
-             .where(payment_method: payment_method, state: PAYABLE_PAYMENT_STATES)
+             .where(payment_method: payment_method, status: PAYABLE_PAYMENT_STATES)
              .order(:id)
              .last
     end
@@ -95,7 +100,7 @@ module SpreeVietqr
                                    .where(order: order, payment_method: payment_method)
                                    .ordered_recently
                                    .includes(:payment)
-                                   .detect { |record| record.payment&.state.in?(PAYABLE_PAYMENT_STATES) }
+                                   .detect { |record| record.payment&.status.in?(PAYABLE_PAYMENT_STATES) }
 
       allocation&.payment
     end

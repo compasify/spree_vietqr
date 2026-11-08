@@ -17,7 +17,9 @@ end
 
 module Spree
   class PaymentMethod
-    def self.preference(name, _type, default: nil)
+    def self.accepts_money_amounts=(_value); end
+
+    def self.preference(name, _type, default: nil, **)
       define_method("preferred_#{name}") do
         preference_values.fetch(name, default)
       end
@@ -37,6 +39,21 @@ module Spree
   end
   class PaymentMethod::Vietqr < PaymentMethod; end
   class Order; end
+
+  class PaymentResponse
+    attr_reader :message, :params, :authorization
+
+    def initialize(success, message, params = {}, options = {})
+      @success = success
+      @message = message
+      @params = params
+      @authorization = options[:authorization]
+    end
+
+    def success?
+      @success
+    end
+  end
 end
 
 # Load services directly

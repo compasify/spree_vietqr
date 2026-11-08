@@ -9,13 +9,14 @@ Gem::Specification.new do |s|
   s.version     = SpreeVietqr::VERSION
   s.authors     = ['Omni Store Team']
   s.email       = ['dev@omnistore.vn']
-  s.summary     = 'VietQR payment gateway for Spree Commerce'
-  s.description = 'Integrates VietQR (bank transfer via QR) as a payment method in Spree Commerce for the Vietnamese market'
+  s.summary     = 'VietQR payment gateway for Spree Commerce 6'
+  s.description = 'Integrates VietQR (bank transfer via QR) as a payment method in Spree Commerce 6 for the Vietnamese market'
   s.license     = 'MIT'
-  s.required_ruby_version = '>= 3.2'
+  s.required_ruby_version = '>= 3.3'
 
   s.files = Dir['{app,config,db,lib}/**/*', 'LICENSE', 'Rakefile', 'README.md']
   s.require_paths = ['lib']
 
-  s.add_dependency 'spree', '>= 5.4.0'
+  s.add_dependency 'spree_api', '>= 6.0', '< 7.0'
+  s.add_dependency 'spree_core', '>= 6.0', '< 7.0'
 end

@@ -57,8 +57,9 @@ module SpreeVietqr
 
       def extract_order_code(payload)
         keyword_init = receiving_account&.keyword_init
-        MatchTransaction.extract_order_code(payload['code'], keyword_init: keyword_init) ||
-          MatchTransaction.extract_order_code(payload['content'], keyword_init: keyword_init)
+        prefix = payment_method.respond_to?(:transfer_content_prefix) ? payment_method.transfer_content_prefix : nil
+        MatchTransaction.extract_order_code(payload['code'], keyword_init: keyword_init, prefix: prefix) ||
+          MatchTransaction.extract_order_code(payload['content'], keyword_init: keyword_init, prefix: prefix)
       end
 
       def parse_time(value)

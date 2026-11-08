@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe SpreeVietqr::AllocatePaymentAccount do
   subject(:allocator) do
     described_class.new(
-      payment_method: double('PaymentMethod'),
+      payment_method: double('PaymentMethod', transfer_content_prefix: 'MMO'),
       order: order,
       payment: double('Payment')
     )
@@ -20,7 +20,7 @@ RSpec.describe SpreeVietqr::AllocatePaymentAccount do
       expect(allocator.send(:transfer_content, account)).to eq('DHR123456789')
     end
 
-    it 'falls back to MMO when the receiving account keyword init is blank' do
+    it 'falls back to the payment method prefix when the receiving account keyword init is blank' do
       account = double('ReceivingAccount', keyword_init: ' ')
 
       expect(allocator.send(:transfer_content, account)).to eq('MMOR123456789')
@@ -85,7 +85,7 @@ RSpec.describe SpreeVietqr::AllocatePaymentAccount do
 
       allow(order).to receive(:payments).and_return(payments_relation)
       allow(payments_relation).to receive(:where)
-        .with(payment_method: payment_method, state: SpreeVietqr::PaymentInfo::PAYABLE_PAYMENT_STATES)
+        .with(payment_method: payment_method, status: Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES)
         .and_return(stale_payments_scope)
       allow(stale_payments_scope).to receive(:where).with(no_args).and_return(where_chain)
       allow(where_chain).to receive(:not).with(id: 42).and_return(replaced_payments)

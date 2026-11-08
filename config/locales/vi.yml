@@ -1,0 +1,7 @@
+vi:
+  spree:
+    permissions_catalog:
+      resources:
+        vietqr:
+          label: VietQR
+          description: Quản lý tài khoản nhận tiền VietQR; xem, khớp tay hoặc xử lý lại webhook chuyển khoản.

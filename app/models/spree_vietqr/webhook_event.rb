@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 module SpreeVietqr
-  class WebhookEvent < ActiveRecord::Base
+  class WebhookEvent < Spree.base_class
     self.table_name = 'spree_vietqr_webhook_events'
+    has_prefix_id :vqrevt
 
     belongs_to :payment, class_name: 'Spree::Payment', optional: true
     belongs_to :payment_method, class_name: 'Spree::PaymentMethod::Vietqr', optional: true

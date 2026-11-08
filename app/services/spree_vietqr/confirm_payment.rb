@@ -20,12 +20,12 @@ module SpreeVietqr
         payment.lock!
         payment.reload
 
-        if allocation.confirmed? || order.payment_state == 'paid' || payment.state == 'completed'
+        if allocation.confirmed? || order.payment_status == 'paid' || payment.status == 'completed'
           mark_duplicate!(allocation: allocation, payment: payment, webhook_event: webhook_event)
           return false
         end
 
-        unless payment.state.in?(%w[checkout pending processing])
+        unless payment.status.in?(Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES)
           webhook_event&.mark_status!('unmatched')
           return false
         end
@@ -33,8 +33,8 @@ module SpreeVietqr
         actual_amount = received_amount(webhook_event: webhook_event, allocation: allocation)
         expected_amount = allocation.expected_amount.to_i
 
-        if actual_amount != expected_amount && order.user.blank?
-          webhook_event&.mark_status!('unmatched', error: 'Amount mismatch cannot be converted to wallet credit because the order has no logged-in user')
+        if actual_amount != expected_amount && order.customer.blank?
+          webhook_event&.mark_status!('unmatched', error: 'Amount mismatch cannot be converted to store credit because the order has no customer')
           return false
         end
 
@@ -117,15 +117,15 @@ module SpreeVietqr
       end
 
       store_credit = Spree::StoreCredit.create!(
-        user: order.user,
+        customer: order.customer,
         category: category,
         type_id: credit_type.id,
         amount: amount,
         currency: order.currency.presence || 'VND',
         memo: wallet_credit_memo(kind: kind, order: order, allocation: allocation, webhook_event: webhook_event, amount: amount),
-        store: order.respond_to?(:store) ? order.store : Spree::Store.default,
+        store: order.store,
         originator: webhook_event,
-        private_metadata: wallet_credit_metadata(kind: kind, order: order, allocation: allocation, webhook_event: webhook_event, amount: amount)
+        metadata: wallet_credit_metadata(kind: kind, order: order, allocation: allocation, webhook_event: webhook_event, amount: amount)
       )
 
       audit_wallet_credit!(kind: kind, order: order, allocation: allocation, webhook_event: webhook_event, store_credit: store_credit, amount: amount)
@@ -165,11 +165,11 @@ module SpreeVietqr
       return unless defined?(Mmo::AuditLog)
 
       Mmo::AuditLog.create!(
-        user: order.user,
+        user: order.customer,
         action: kind == 'underpayment' ? 'vietqr_underpayment_credited' : 'vietqr_overpayment_credited',
         metadata: wallet_credit_metadata(kind: kind, order: order, allocation: allocation, webhook_event: webhook_event, amount: amount).merge(
           store_credit_id: store_credit.id,
-          new_balance: order.user.total_available_store_credit.to_i
+          new_balance: order.customer.total_available_store_credit.to_i
         )
       )
     end
@@ -202,7 +202,7 @@ module SpreeVietqr
 
       order.reload
       return unless order.respond_to?(:mmo_order?) && order.mmo_order?
-      return unless order.payment_state == 'paid'
+      return unless order.payment_status == 'paid'
       return if defined?(Mmo::Delivery) && Mmo::Delivery.for_order(order).active.exists?
 
       Mmo::DeliverOrderJob.perform_later(order.id)

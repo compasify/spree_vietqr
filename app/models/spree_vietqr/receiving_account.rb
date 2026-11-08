@@ -1,8 +1,16 @@
 # frozen_string_literal: true
 
 module SpreeVietqr
-  class ReceivingAccount < ActiveRecord::Base
+  class ReceivingAccount < Spree.base_class
     self.table_name = 'spree_vietqr_receiving_accounts'
+    has_prefix_id :vqracct
+
+    SECRET_ATTRIBUTES = %i[webhook_secret payos_api_key payos_checksum_key].freeze
+    SECRET_MASK = '••••' # the prefix Spree's dashboard SecretInput recognizes
+
+    # Provider credentials are encrypted whenever the host app configures
+    # Active Record encryption keys; plain values written earlier stay readable.
+    encrypts(*SECRET_ATTRIBUTES, support_unencrypted_data: true) if ActiveRecord::Encryption.config.has_primary_key?
 
     belongs_to :payment_method, class_name: 'Spree::PaymentMethod::Vietqr'
     has_many :payment_allocations, class_name: 'SpreeVietqr::PaymentAllocation', dependent: :restrict_with_error
@@ -50,6 +58,14 @@ module SpreeVietqr
       return true if monthly_quota_amount.blank? || monthly_quota_amount.to_i <= 0
 
       period_allocated_amount.to_i + amount <= monthly_quota_amount.to_i
+    end
+
+    # Last four characters of a stored secret, for display without revealing it.
+    def masked_secret(attribute)
+      value = public_send(attribute).to_s
+      return nil if value.blank?
+
+      "#{SECRET_MASK}#{value.last(4)}"
     end
 
     def threshold_reached?

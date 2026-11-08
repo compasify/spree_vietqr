@@ -20,7 +20,12 @@ RSpec.describe SpreeVietqr::PaymentInfo do
       order_number: 'R123456789',
       provider_checkout_url: nil,
       payment_link_id: nil,
-      provider_qr_code: nil
+      provider_qr_code: nil,
+      receiving_account: nil,
+      status: 'allocated',
+      expires_at: nil,
+      payment: double('Spree::Payment', prefixed_id: 'py_1'),
+      order: double('Spree::Order', currency: 'VND')
     )
   end
 
@@ -63,14 +68,16 @@ RSpec.describe SpreeVietqr::PaymentInfo do
         amount: 250_000,
         currency: "VND",
         transfer_content: "MMOR123456789",
-        order_number: "R123456789"
+        order_number: "R123456789",
+        status: 'allocated',
+        payment_id: 'py_1'
       )
     end
   end
 
   describe '.find_payable_payment' do
     it 'prefers the payment referenced by the active allocation' do
-      allocated_payment = double('Spree::Payment', state: 'pending')
+      allocated_payment = double('Spree::Payment', status: 'pending')
       active_allocation = double('SpreeVietqr::PaymentAllocation', payment: allocated_payment)
 
       allow(allocation_relation).to receive(:detect).and_return(active_allocation)

@@ -1,4 +1,7 @@
 en:
   spree:
-    vietqr_accounts: VietQR
-    webhook_events: Webhook VietQR
+    permissions_catalog:
+      resources:
+        vietqr:
+          label: VietQR
+          description: Manage VietQR receiving accounts and review, match or retry bank transfer webhooks.

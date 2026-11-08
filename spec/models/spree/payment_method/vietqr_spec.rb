@@ -17,21 +17,30 @@ RSpec.describe Spree::PaymentMethod::Vietqr do
     end
   end
 
-  describe '#description_partial_name' do
-    it 'uses the VietQR admin description partial' do
-      expect(payment_method.description_partial_name).to eq('vietqr')
-    end
-  end
-
   describe '#source_required?' do
     it 'returns false' do
       expect(payment_method.source_required?).to be false
     end
   end
 
-  describe '#auto_capture?' do
+  describe '#resolved_capture_method' do
+    it 'never captures at checkout' do
+      expect(payment_method.resolved_capture_method).to eq('manual')
+    end
+  end
+
+  describe '#session_required?' do
     it 'returns false' do
-      expect(payment_method.auto_capture?).to be false
+      expect(payment_method.session_required?).to be false
+    end
+  end
+
+  describe '#authorize' do
+    it 'succeeds with a VietQR reference without moving money' do
+      response = payment_method.authorize(Object.new, nil)
+
+      expect(response).to be_success
+      expect(response.authorization).to start_with('VIETQR-')
     end
   end
 
@@ -46,17 +55,22 @@ RSpec.describe Spree::PaymentMethod::Vietqr do
       expect(payment_method.preferred_account_routing_strategy).to eq('single')
       expect(payment_method.account_routing_strategy).to eq('single')
     end
-  end
 
-  describe '.provider_options' do
-    it 'lists supported provider choices for admin selection' do
-      expect(described_class.provider_options).to include(['Xác nhận thủ công', 'manual'], ['Webhook SePay', 'sepay'], ['Webhook PayOS', 'payos'])
+    it 'defaults the QR timeout and transfer prefix' do
+      expect(payment_method.payment_timeout_minutes).to eq(15)
+      expect(payment_method.transfer_content_prefix).to eq('MMO')
+    end
+
+    it 'uses a configured transfer prefix' do
+      payment_method.preferred_transfer_content_prefix = ' PV '
+
+      expect(payment_method.transfer_content_prefix).to eq('PV')
     end
   end
 
-  describe '#custom_form_fields_partial_name' do
-    it 'uses the VietQR admin custom fields partial' do
-      expect(payment_method.custom_form_fields_partial_name).to eq('vietqr')
+  describe 'PROVIDERS' do
+    it 'lists the supported confirmation providers' do
+      expect(described_class::PROVIDERS).to eq(%w[manual sepay payos])
     end
   end
 

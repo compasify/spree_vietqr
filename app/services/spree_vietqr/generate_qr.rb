@@ -20,7 +20,7 @@ module SpreeVietqr
       account_number = account&.account_number
       account_name = account&.account_name
       amount = allocation&.expected_amount.to_i.nonzero? || order.total.to_i
-      transfer_content = allocation&.transfer_content.presence || format_transfer_content(order)
+      transfer_content = allocation&.transfer_content.presence || format_transfer_content(payment_method, order)
 
       build_url(
         bank_bin: bank_bin,
@@ -50,8 +50,8 @@ module SpreeVietqr
 
     private
 
-    def format_transfer_content(order)
-      TransferContent.with_suffix("MMO#{order.number}")
+    def format_transfer_content(payment_method, order)
+      TransferContent.with_suffix("#{payment_method.transfer_content_prefix}#{order.number}")
     end
 
     def build_url(bank_bin:, account_number:, account_name:, amount:, transfer_content:)

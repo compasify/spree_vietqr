@@ -15,8 +15,8 @@ module SpreeVietqr
     private
 
     def payable_allocation?(allocation)
-      allocation.payment.state.in?(%w[checkout pending processing]) &&
-        allocation.order.payment_state.in?(%w[balance_due pending checkout])
+      allocation.payment.status.in?(Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES) &&
+        !allocation.order.payment_status.in?(Spree::PaymentMethod::Vietqr::SETTLED_ORDER_PAYMENT_STATUSES)
     end
   end
 end

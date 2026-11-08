@@ -20,8 +20,8 @@ module SpreeVietqr
       end
     end
 
-    def self.extract_order_code(content, keyword_init: nil)
-      prefixes = [DEFAULT_TRANSFER_CONTENT_PREFIX, keyword_init.to_s.strip.presence].compact
+    def self.extract_order_code(content, keyword_init: nil, prefix: nil)
+      prefixes = [prefix.to_s.strip.presence || DEFAULT_TRANSFER_CONTENT_PREFIX, keyword_init.to_s.strip.presence].compact.uniq
       pattern = /(?:#{prefixes.map { |prefix| Regexp.escape(prefix) }.join('|')})\s*(R\d+)/i
 
       content&.match(pattern)&.[](1)
@@ -73,10 +73,9 @@ module SpreeVietqr
 
       payment = allocation.payment
       order = allocation.order
-      return false unless payment.state.in?(%w[checkout pending processing])
-      return true unless order.respond_to?(:payment_state)
+      return false unless payment.status.in?(Spree::PaymentMethod::Vietqr::PAYABLE_PAYMENT_STATUSES)
 
-      order.payment_state.in?(%w[balance_due pending checkout])
+      !order.payment_status.in?(Spree::PaymentMethod::Vietqr::SETTLED_ORDER_PAYMENT_STATUSES)
     end
 
     def compare_numeric_identifier(expected, actual)

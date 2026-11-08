@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 module SpreeVietqr
-  class PaymentAllocation < ActiveRecord::Base
+  class PaymentAllocation < Spree.base_class
     self.table_name = 'spree_vietqr_payment_allocations'
+    has_prefix_id :vqralloc
 
     STATUSES = %w[allocated confirmed released].freeze
 
